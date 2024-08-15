@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 public abstract class TrisolaranMixin {
 	@ModifyArg(method = "getSkyAngle", at = @At(value = "INVOKE", target = "net/minecraft/util/math/MathHelper.fractionalPart(D)D"))
 	private double getSkyAngle(double days) {
-		System.out.println(days);
-		return Math.sin(days*100)*10 + days*5;
+		//return Math.sin(days*100)*10 + days*5;
+		return 0.0F;
 	}
 }
