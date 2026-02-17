@@ -39,14 +39,23 @@ public class CelestialLocatorScreen extends Screen {
         int inputWidth = 110;
         
         // 1. 重置按钮
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("Reset System"), button -> {
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("Reset"), button -> {
             TrisolaranSystem.getSystem().reset();
             updateInputsFromSystem();
             // 重置视图
             scale = 1.0;
             offsetX = 0;
             offsetY = 0;
-        }).dimensions(10, this.height - 30, 100, 20).build());
+        }).dimensions(10, this.height - 30, 50, 20).build());
+        
+        // 1.5 随机按钮
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("Random"), button -> {
+            TrisolaranSystem.getSystem().randomize();
+            updateInputsFromSystem();
+            scale = 1.0;
+            offsetX = 0;
+            offsetY = 0;
+        }).dimensions(65, this.height - 30, 60, 20).build());
         
         // 2. 应用按钮
         this.addDrawableChild(ButtonWidget.builder(Text.literal("Apply Changes"), button -> {
@@ -86,13 +95,18 @@ public class CelestialLocatorScreen extends Screen {
         planetVelInput = new TextFieldWidget(this.textRenderer, rightPanelX, planetY + 16, inputWidth, 14, Text.literal("Planet Vel"));
         this.addDrawableChild(planetVelInput);
         
+        // 行星质量输入
+        TextFieldWidget planetMassInput = new TextFieldWidget(this.textRenderer, rightPanelX, planetY + 32, inputWidth, 14, Text.literal("Planet Mass"));
+        this.addDrawableChild(planetMassInput);
+        massInputs.add(planetMassInput); // 复用massInputs列表来管理更新逻辑，注意索引
+        
         updateInputsFromSystem();
     }
     
     private void updateInputsFromSystem() {
         List<ThreeBodySystem.Body> bodies = TrisolaranSystem.getSystem().getBodies();
         
-        // 更新太阳
+        // 更新太阳 (indices 0, 1, 2)
         for (int i = 0; i < 3; i++) {
             if (i >= bodies.size()) break;
             ThreeBodySystem.Body body = bodies.get(i);
@@ -114,6 +128,11 @@ public class CelestialLocatorScreen extends Screen {
                 planetPosInput.setText(String.format("%.1f, %.1f", planet.position.x, planet.position.y));
             if (!planetVelInput.isFocused())
                 planetVelInput.setText(String.format("%.2f, %.2f", planet.velocity.x, planet.velocity.y));
+            
+            // 行星质量 (massInputs的第4个元素，index 3)
+            if (massInputs.size() > 3 && !massInputs.get(3).isFocused()) {
+                massInputs.get(3).setText(String.format("%.1f", planet.mass));
+            }
         }
     }
     
@@ -167,6 +186,11 @@ public class CelestialLocatorScreen extends Screen {
                         Double.parseDouble(pVelParts[1].trim()),
                         planet.velocity.z
                     );
+                }
+                
+                // 应用行星质量
+                if (massInputs.size() > 3) {
+                    planet.mass = Double.parseDouble(massInputs.get(3).getText().trim());
                 }
             }
             
@@ -240,6 +264,46 @@ public class CelestialLocatorScreen extends Screen {
             int size = 2; 
             int color = (i < 3) ? sunColors[i] : sunColors[3];
             context.fill(screenX - size, screenY - size, screenX + size + 1, screenY + size + 1, color);
+            
+            // 如果是行星，绘制自转方向 (Orientation)
+            if (i == 3) {
+                // orientation 代表"天顶"或"北方"，这里我们在2D平面上投影它的 X/Z 分量
+                // 注意：simulation 中的 orientation 是 Vec3d(x, y, z)
+                // 在 GUI 上，我们是从上往下看 (Top-Down View)，所以对应 x, z 坐标
+                // 但我们的渲染映射是: screenX = worldX, screenY = worldY (注意这里其实是 Y 轴作为纵轴)
+                // 等等，ThreeBodySystem 里是 (x, y, z)，通常 y 是垂直高度，x, z 是水平面
+                // 我们的 GUI 渲染逻辑一直用的是 body.position.y 作为屏幕 Y 轴
+                // 这意味着我们在看 XY 平面 (侧视图？) 或者模拟是在 2D 平面 (z=0) 进行的？
+                // 检查 ThreeBodySystem 初始化：恒星分布在 (x, y, 0) 和 (x, y, 20)
+                // 所以主要运动平面是 XY 平面。
+                
+                // 那么 Orientation (自转轴) 如果默认是 (0, 1, 0) (Y轴)，在 XY 平面上就是一个点。
+                // 如果我们想看"朝向"，应该是看 orientation 在 XY 平面上的投影，或者
+                // 我们之前定义的"观察方向" (World Forward)
+                
+                // 假设 orientation 向量就是我们在 GUI 上要画的箭头方向
+                Vec3d dir = body.orientation;
+                if (dir.lengthSquared() > 0.0001) {
+                    // 投影到 XY 平面并归一化
+                    double len = Math.sqrt(dir.x * dir.x + dir.y * dir.y);
+                    if (len > 0.0001) {
+                        int endX = screenX + (int)(dir.x / len * 10);
+                        int endY = screenY + (int)(dir.y / len * 10);
+                        
+                        // 绘制白色线条表示朝向
+                        // 简易画线：用多个点模拟
+                        int steps = 5;
+                        for(int s=0; s<=steps; s++) {
+                            double t = (double)s / steps;
+                            int px = screenX + (int)((endX - screenX) * t);
+                            int py = screenY + (int)((endY - screenY) * t);
+                            context.fill(px, py, px+1, py+1, 0xFFFFFFFF);
+                        }
+                        // 箭头头部
+                        context.fill(endX - 1, endY - 1, endX + 1, endY + 1, 0xFFFF0000); // 红色头部
+                    }
+                }
+            }
             
             // 绘制标签 (不带阴影)
             String label = (i == 3) ? "Planet" : "S" + (i + 1);

@@ -3,7 +3,8 @@
 	"package": "com.adaqa.mixin.client",
 	"compatibilityLevel": "JAVA_21",
 	"client": [
-      "TrisolaranClientMixin"
+      "TrisolaranClientMixin",
+      "MixinClientWorld"
 	],
 	"injectors": {
 		"defaultRequire": 1

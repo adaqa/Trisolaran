@@ -40,7 +40,11 @@ public class CustomSkyRenderer implements DimensionRenderingRegistry.SkyRenderer
     private void renderSky(WorldRenderContext context, MatrixStack matrixStack, ClientWorld world) {
         float tickDelta = context.tickCounter().getTickDelta(true);
         Matrix4f projectionMatrix = context.projectionMatrix();
-        Vec3d skyColor = new Vec3d(0.65F, 0.6F, 1.0F);
+        Vec3d skyColor = getCalculatedSkyColor();
+
+        // 覆盖默认的雾气颜色，使其与天空颜色一致
+        // 这一步对于防止"黑天白雾"至关重要
+        RenderSystem.setShaderFogColor((float)skyColor.x, (float)skyColor.y, (float)skyColor.z);
 
         setupInitialRenderState(skyColor);
         RenderSystem.enableBlend();
@@ -57,11 +61,14 @@ public class CustomSkyRenderer implements DimensionRenderingRegistry.SkyRenderer
     }
 
     private void renderFogEffect(ClientWorld world, float tickDelta, MatrixStack matrixStack) {
-        float[] fogColorOverride = world.getDimensionEffects().getFogColorOverride(0.0F, tickDelta);
+        // 暂时禁用自定义晚霞渲染，等待后续优化
+        /*
+        float[] fogColorOverride = getFogColorOverride(tickDelta);
         if (fogColorOverride != null) {
             RenderSystem.setShader(GameRenderer::getPositionColorProgram);
             setupFogColorRender(matrixStack, fogColorOverride);
         }
+        */
     }
 
     private void setupFogColorRender(MatrixStack matrixStack, float[] fogColorOverride) {
