@@ -15,7 +15,7 @@ import net.minecraft.util.math.RotationAxis;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
 
-import static com.adaqa.TrisolarSimulation.*;
+import static com.adaqa.simulation.TrisolaranSystem.*;
 
 public class CustomSkyRenderer implements DimensionRenderingRegistry.SkyRenderer {
 
